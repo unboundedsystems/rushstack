@@ -30,6 +30,11 @@ export interface IFetchAstSymbolOptions {
   isExternal: boolean;
 
   /**
+   * True if followedSymbol came from a namespace import
+   */
+  isNamespaceImport?: boolean;
+
+  /**
    * If true, symbols with AstSymbol.nominalAnalysis=true will be returned.
    * Otherwise `undefined` will be returned for such symbols.
    */
@@ -272,7 +277,8 @@ export class AstSymbolTable {
 
     // Is this node declaring a new AstSymbol?
     const newGoverningAstDeclaration: AstDeclaration | undefined = this._fetchAstDeclaration(node,
-      governingAstDeclaration.astSymbol.isExternal);
+      governingAstDeclaration.astSymbol.isExternal,
+      governingAstDeclaration.astSymbol.isNamespaceImport);
 
     for (const childNode of node.getChildren()) {
       this._analyzeChildTree(childNode, newGoverningAstDeclaration || governingAstDeclaration);
@@ -298,9 +304,13 @@ export class AstSymbolTable {
   }
 
   // tslint:disable-next-line:no-unused-variable
-  private _fetchAstDeclaration(node: ts.Node, isExternal: boolean): AstDeclaration | undefined {
+  private _fetchAstDeclaration(node: ts.Node, isExternal: boolean,
+    isNamespaceImport: boolean): AstDeclaration | undefined {
+
     if (!AstDeclaration.isSupportedSyntaxKind(node.kind)) {
-      return undefined;
+      if (node.kind !== ts.SyntaxKind.SourceFile || !isNamespaceImport) {
+        return undefined;
+      }
     }
 
     const symbol: ts.Symbol | undefined = TypeScriptHelpers.getSymbolForDeclaration(node as ts.Declaration,
@@ -385,7 +395,8 @@ export class AstSymbolTable {
 
       if (!nominalAnalysis) {
         for (const declaration of followedSymbol.declarations || []) {
-          if (!AstDeclaration.isSupportedSyntaxKind(declaration.kind)) {
+          if (!AstDeclaration.isSupportedSyntaxKind(declaration.kind) &&
+            !(options.isNamespaceImport && declaration.kind === ts.SyntaxKind.SourceFile)) {
             throw new InternalError(`The "${followedSymbol.name}" symbol has a`
               + ` ts.SyntaxKind.${ts.SyntaxKind[declaration.kind]} declaration which is not (yet?)`
               + ` supported by API Extractor`);
@@ -459,6 +470,7 @@ export class AstSymbolTable {
         followedSymbol: followedSymbol,
         localName: localName,
         isExternal: options.isExternal,
+        isNamespaceImport: !!options.isNamespaceImport,
         nominalAnalysis: nominalAnalysis,
         parentAstSymbol: parentAstSymbol,
         rootAstSymbol: parentAstSymbol ? parentAstSymbol.rootAstSymbol : undefined
@@ -506,7 +518,12 @@ export class AstSymbolTable {
   private _tryFindFirstAstDeclarationParent(node: ts.Node): ts.Node | undefined {
     let currentNode: ts.Node | undefined = node.parent;
     while (currentNode) {
-      if (AstDeclaration.isSupportedSyntaxKind(currentNode.kind)) {
+      if (currentNode.kind === ts.SyntaxKind.SourceFile) {
+        if (this._astDeclarationsByDeclaration.get(currentNode)) {
+          return currentNode;
+        }
+
+      } else if (AstDeclaration.isSupportedSyntaxKind(currentNode.kind)) {
         return currentNode;
       }
       currentNode = currentNode.parent;

@@ -479,11 +479,11 @@ export class Span {
 
     if (options.separatorOverride !== undefined) {
       if (this.separator || childCount === 0) {
-        options.output.append(options.separatorOverride);
+        options.output.append(filterSourceMapComments(options.separatorOverride));
       }
     } else {
       if (!this.modification.omitSeparatorAfter) {
-        options.output.append(this.separator);
+        options.output.append(filterSourceMapComments(this.separator));
       }
     }
   }
@@ -508,4 +508,13 @@ export class Span {
 interface IWriteModifiedTextOptions {
   output: StringBuilder;
   separatorOverride: string | undefined;
+}
+
+const sourceMapCommentRegEx: RegExp = RegExp('^\s*//# sourceMappingURL=');
+
+function filterSourceMapComments(text: string): string {
+  const lines: string[] = text.split('\n');
+  return lines.map((l) => sourceMapCommentRegEx.test(l) ? undefined : l)
+    .filter((l) => l !== undefined)
+    .join('\n');
 }
