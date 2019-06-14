@@ -141,6 +141,7 @@ export class ApiModelGenerator {
         break;
 
       case ts.SyntaxKind.ModuleDeclaration:
+      case ts.SyntaxKind.SourceFile:
         this._processApiNamespace(astDeclaration, exportedName, parentApiItem);
         break;
 
