@@ -278,6 +278,13 @@ export class ApiReportGenerator {
       case ts.SyntaxKind.TypeLiteral:
         insideTypeLiteral = true;
         break;
+
+      case ts.SyntaxKind.SourceFile:
+        if (!astDeclaration.parent) {
+          span.modification.prefix = 'export declare ';
+        }
+        span.modification.prefix += `namespace ${astDeclaration.astSymbol.localName} {\n`;
+        span.modification.suffix = '\n}';
     }
 
     if (recurseChildren) {
