@@ -447,10 +447,16 @@ export class ExportAnalyzer {
         //   SemicolonToken:  pre=[;]
 
         if (externalModulePath === undefined) {
-          // The implementation here only works when importing from an external module.
-          // The full solution is tracked by: https://github.com/microsoft/rushstack/issues/1029
-          throw new Error('"import * as ___ from ___;" is not supported yet for local files.'
-            + '\nFailure in: ' + importDeclaration.getSourceFile().fileName);
+          const followedSymbol: ts.Symbol =
+            TypeScriptHelpers.followAliases(declarationSymbol, this._typeChecker);
+          return this._astSymbolTable.fetchAstSymbol({
+            followedSymbol,
+            isExternal: false,
+            isNamespaceImport: true,
+            addIfMissing: true,
+            includeNominalAnalysis: true,
+            localName: declarationSymbol.getName()
+          });
         }
 
         // Here importSymbol=undefined because {@inheritDoc} and such are not going to work correctly for

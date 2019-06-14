@@ -12,6 +12,7 @@ export interface IAstSymbolOptions {
   readonly followedSymbol: ts.Symbol;
   readonly localName: string;
   readonly isExternal: boolean;
+  readonly isNamespaceImport: boolean;
   readonly nominalAnalysis: boolean;
   readonly parentAstSymbol: AstSymbol | undefined;
   readonly rootAstSymbol: AstSymbol | undefined;
@@ -70,6 +71,8 @@ export class AstSymbol {
    */
   public readonly isExternal: boolean;
 
+  public readonly isNamespaceImport: boolean;
+
   /**
    * The compiler symbol where this type was defined, after following any aliases.
    *
@@ -122,6 +125,7 @@ export class AstSymbol {
     this.followedSymbol = options.followedSymbol;
     this.localName = options.localName;
     this.isExternal = options.isExternal;
+    this.isNamespaceImport = options.isNamespaceImport;
     this.nominalAnalysis = options.nominalAnalysis;
     this.parentAstSymbol = options.parentAstSymbol;
     this.rootAstSymbol = options.rootAstSymbol || this;

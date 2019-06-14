@@ -124,3 +124,16 @@ export { TypeReferencesInAedoc } from './TypeReferencesInAedoc';
 export { ReferenceLibDirective } from './ReferenceLibDirective';
 
 export { VARIABLE, NamespaceContainingVariable } from './variableDeclarations';
+
+/**
+ * Test namespace imports.
+ */
+/* NOTE: All this together is a failing test case where parent/child isn't set
+ * up correctly
+import { foo as NamespaceImport } from "./Namespace";
+export { NamespaceImport };
+import * as RealNamespaceImport from "./Namespace";
+export { RealNamespaceImport };
+*/
+import * as RealNamespaceImport from "./Namespace";
+export { RealNamespaceImport };

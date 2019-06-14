@@ -268,6 +268,13 @@ export class DtsRollupGenerator {
         }
 
         break;
+
+      case ts.SyntaxKind.SourceFile:
+        if (!astDeclaration.parent) {
+          span.modification.prefix = 'export declare ';
+        }
+        span.modification.prefix += `namespace ${astDeclaration.astSymbol.localName} {\n`;
+        span.modification.suffix = '\n}';
     }
 
     if (recurseChildren) {
@@ -276,6 +283,8 @@ export class DtsRollupGenerator {
 
         // Should we trim this node?
         let trimmed: boolean = false;
+        // MRT: Probably need to check here for SourceFile when dealing with
+        // an import * as foo in file other than index.d.ts
         if (AstDeclaration.isSupportedSyntaxKind(child.kind)) {
           childAstDeclaration = collector.astSymbolTable.getChildAstDeclarationByNode(child.node, astDeclaration);
           const releaseTag: ReleaseTag = collector.fetchMetadata(childAstDeclaration).effectiveReleaseTag;
@@ -324,6 +333,9 @@ export class DtsRollupGenerator {
 
             trimmed = true;
           }
+        // DEBUG
+        // } else {
+        //   if (child.kind === ts.SyntaxKind.SourceFile) debugger
         }
 
         if (!trimmed) {
