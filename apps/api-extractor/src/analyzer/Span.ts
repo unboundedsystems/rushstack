@@ -10,6 +10,12 @@ import { Sort } from '@microsoft/node-core-library';
  */
 export class SpanModification {
   /**
+   * If true, this span and all children will be indented once. Indents are
+   * cumulative.
+   */
+  public indent: boolean = false;
+
+  /**
    * If true, all of the child spans will be omitted from the Span.getModifiedText() output.
    * @remarks
    * Also, the modify() operation will not recurse into these spans.
@@ -358,6 +364,7 @@ export class Span {
     const output: StringBuilder = new StringBuilder();
 
     this._writeModifiedText({
+      indent: '',
       output,
       separatorOverride: undefined
     });
@@ -367,6 +374,7 @@ export class Span {
 
   public writeModifiedText(output: StringBuilder): void {
     this._writeModifiedText({
+      indent: '',
       output,
       separatorOverride: undefined
     });
@@ -398,7 +406,8 @@ export class Span {
   }
 
   private _writeModifiedText(options: IWriteModifiedTextOptions): void {
-    options.output.append(this.modification.prefix);
+    const indent: string = options.indent + (this.modification.indent ? '  ' : '');
+    options.output.append(indentString(this.modification.prefix, indent));
 
     const childCount: number = this.children.length;
 
@@ -418,7 +427,7 @@ export class Span {
 
           Sort.sortBy(sortedSubset, x => x.modification.sortKey);
 
-          const childOptions: IWriteModifiedTextOptions = { ...options };
+          const childOptions: IWriteModifiedTextOptions = { ...options, indent };
 
           let sortedSubsetIndex: number = 0;
           for (let index: number = 0; index < childCount; ++index) {
@@ -452,6 +461,7 @@ export class Span {
         // Special case where the separatorOverride is passed down to the "last inner separator" span
         for (let i: number = 0; i < childCount; ++i) {
           const child: Span = this.children[i];
+          const childOptions: IWriteModifiedTextOptions = { ...options, indent };
 
           if (
             // Only the last child inherits the separatorOverride, because only it can contain
@@ -460,30 +470,27 @@ export class Span {
             // If this.separator is specified, then we will write separatorOverride below, so don't pass it along
             || this.separator
           ) {
-            const childOptions: IWriteModifiedTextOptions = { ...options };
             childOptions.separatorOverride = undefined;
-            child._writeModifiedText(childOptions);
-          } else {
-            child._writeModifiedText(options);
           }
+          child._writeModifiedText(childOptions);
         }
       } else {
         // The normal simple case
         for (const child of this.children) {
-          child._writeModifiedText(options);
+          child._writeModifiedText({ ...options, indent });
         }
       }
     }
 
-    options.output.append(this.modification.suffix);
+    options.output.append(indentString(this.modification.suffix, indent));
 
     if (options.separatorOverride !== undefined) {
       if (this.separator || childCount === 0) {
-        options.output.append(filterSourceMapComments(options.separatorOverride));
+        options.output.append(indentString(filterSourceMapComments(options.separatorOverride), indent));
       }
     } else {
       if (!this.modification.omitSeparatorAfter) {
-        options.output.append(filterSourceMapComments(this.separator));
+        options.output.append(indentString(filterSourceMapComments(this.separator), indent));
       }
     }
   }
@@ -508,6 +515,7 @@ export class Span {
 interface IWriteModifiedTextOptions {
   output: StringBuilder;
   separatorOverride: string | undefined;
+  indent: string;
 }
 
 const sourceMapCommentRegEx: RegExp = RegExp('^\s*//# sourceMappingURL=');
@@ -517,4 +525,8 @@ function filterSourceMapComments(text: string): string {
   return lines.map((l) => sourceMapCommentRegEx.test(l) ? undefined : l)
     .filter((l) => l !== undefined)
     .join('\n');
+}
+
+function indentString(s: string, indent: string): string {
+  return s.replace(/\n/g, "\n" + indent);
 }
