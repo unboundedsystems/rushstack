@@ -513,7 +513,7 @@ export class AstSymbolTable {
 
         // Is there a parent AstSymbol?  First we check to see if there is a parent declaration:
         const arbitraryParentDeclaration: ts.Node | undefined
-          = this._tryFindFirstAstDeclarationParent(options.namespaceImport || followedSymbol.declarations[0]);
+          = this._tryFindFirstAstDeclarationParent(followedSymbol.declarations[0], options.namespaceImport);
 
         if (arbitraryParentDeclaration) {
           const parentSymbol: ts.Symbol = TypeScriptHelpers.getSymbolForDeclaration(
@@ -556,7 +556,8 @@ export class AstSymbolTable {
 
         let parentAstDeclaration: AstDeclaration | undefined = undefined;
         if (parentAstSymbol) {
-          const parentDeclaration: ts.Node | undefined = this._tryFindFirstAstDeclarationParent(declaration);
+          const parentDeclaration: ts.Node | undefined =
+            this._tryFindFirstAstDeclarationParent(declaration, options.namespaceImport);
 
           if (!parentDeclaration) {
             throw new InternalError('Missing parent declaration');
@@ -587,7 +588,7 @@ export class AstSymbolTable {
   /**
    * Returns the first parent satisfying isAstDeclaration(), or undefined if none is found.
    */
-  private _tryFindFirstAstDeclarationParent(node: ts.Node): ts.Node | undefined {
+  private _tryFindFirstAstDeclarationParent(node: ts.Node, fallback?: ts.Node): ts.Node | undefined {
     let currentNode: ts.Node | undefined = node.parent;
     while (currentNode) {
       if (currentNode.kind === ts.SyntaxKind.SourceFile) {
@@ -602,6 +603,9 @@ export class AstSymbolTable {
         return currentNode;
       }
       currentNode = currentNode.parent;
+    }
+    if (fallback) {
+      return this._tryFindFirstAstDeclarationParent(fallback);
     }
     return undefined;
   }
