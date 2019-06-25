@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
 // See LICENSE in the project root for license information.
 
+import * as colors from 'colors';
+
 import {
   DocNode,
   DocNodeKind,
@@ -15,7 +17,8 @@ import {
   DocSection,
   DocNodeTransforms,
   DocEscapedText,
-  DocErrorText
+  DocErrorText,
+  DocBlockTag
 } from '@microsoft/tsdoc';
 import { InternalError } from '@microsoft/node-core-library';
 
@@ -189,6 +192,11 @@ export class MarkdownEmitter {
         break;
       }
       case DocNodeKind.InlineTag: {
+        break;
+      }
+      case DocNodeKind.BlockTag: {
+        const docBlockTag: DocBlockTag = docNode as DocBlockTag;
+        console.log(colors.yellow(`WARNING: Ignoring unsupported embedded Markdown block tag '${docBlockTag.tagName}'`));
         break;
       }
       default:
