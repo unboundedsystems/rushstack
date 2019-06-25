@@ -16,6 +16,7 @@ import { AstSymbol } from '../analyzer/AstSymbol';
 import { ExtractorMessage } from '../api/ExtractorMessage';
 import { StringWriter } from './StringWriter';
 import { DtsEmitHelpers } from './DtsEmitHelpers';
+import { AstModule } from '../analyzer/AstModule';
 
 export class ApiReportGenerator {
   private static _TrimSpacesRegExp: RegExp = / +$/gm;
@@ -176,6 +177,7 @@ export class ApiReportGenerator {
 
     let recurseChildren: boolean = true;
     let sortChildren: boolean = false;
+    let indentChildren: boolean = false;
 
     switch (span.kind) {
       case ts.SyntaxKind.JSDocComment:
@@ -280,16 +282,49 @@ export class ApiReportGenerator {
         break;
 
       case ts.SyntaxKind.SourceFile:
-        if (!astDeclaration.parent) {
-          span.modification.prefix = 'export declare ';
+        if (!astDeclaration.parent && !span.parent) {
+          span.modification.prefix = 'export ';
         }
         span.modification.prefix += `namespace ${astDeclaration.astSymbol.localName} {\n`;
         span.modification.suffix = '\n}';
+        indentChildren = true;
+        break;
+
+      case ts.SyntaxKind.ExportDeclaration:
+        let output: string = '';
+        const astModule: AstModule = collector.astSymbolTable.fetchAstModuleFromWorkingPackage(
+          astDeclaration.declaration as ts.SourceFile);
+        for (const mod of astModule.starExportedModules) {
+          if (!mod.astModuleExportInfo) {
+            continue;
+          }
+          for (const ent of mod.astModuleExportInfo.exportedLocalEntities.values()) {
+            if (ent instanceof AstSymbol) {
+              const childEntity: CollectorEntity | undefined = collector.tryGetCollectorEntity(ent);
+              if (!childEntity) {
+                throw new Error(`Why no child entity?`);
+              }
+              for (const childAstDeclaration of ent.astDeclarations) {
+                const childSpan: Span = new Span(childAstDeclaration.declaration, span);
+                ApiReportGenerator._modifySpan(collector, childSpan, childEntity,
+                  childAstDeclaration, insideTypeLiteral);
+                output += `\n// STARMOD:\n` + childSpan.getModifiedText();
+              }
+            }
+          }
+        }
+        span.modification.omitChildren = true;
+        span.modification.prefix = output;
+        recurseChildren = false;
+        break;
     }
 
     if (recurseChildren) {
       for (const child of span.children) {
         let childAstDeclaration: AstDeclaration = astDeclaration;
+        if (indentChildren) {
+          child.modification.indent = true;
+        }
 
         if (AstDeclaration.isSupportedSyntaxKind(child.kind)) {
           childAstDeclaration = collector.astSymbolTable.getChildAstDeclarationByNode(child.node, astDeclaration);

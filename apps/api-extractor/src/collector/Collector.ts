@@ -144,7 +144,7 @@ export class Collector {
   }
 
   public get entities(): ReadonlyArray<CollectorEntity> {
-    return this._entities;
+    return this._entities.filter((entity) => entity.namespace === undefined);
   }
 
   /**
@@ -213,8 +213,26 @@ export class Collector {
     const astModuleExportInfo: AstModuleExportInfo = this.astSymbolTable.fetchAstModuleExportInfo(astEntryPoint);
     for (const [exportName, astEntity] of astModuleExportInfo.exportedLocalEntities) {
       this._createCollectorEntity(astEntity, exportName);
-
       exportedAstEntities.push(astEntity);
+
+      if (!(astEntity instanceof AstSymbol)) {
+        continue;
+      }
+      if (astEntity.isNamespaceImport) {
+        // MRT : validate getting sourcefile
+        const importedModule: AstModule = this.astSymbolTable.fetchAstModuleFromWorkingPackage(
+          astEntity.astDeclarations[0].declaration as ts.SourceFile);
+        for (const starExportedModule of importedModule.starExportedModules) {
+          const starExportedInfo: AstModuleExportInfo =
+            this.astSymbolTable.fetchAstModuleExportInfo(starExportedModule);
+          for (const [name, entity] of starExportedInfo.exportedLocalEntities) {
+            if (entity instanceof AstSymbol) {
+              this._createCollectorEntity(entity, name, astEntity.localName);
+              exportedAstEntities.push(entity);
+            }
+          }
+        }
+      }
     }
 
     // Create a CollectorEntity for each indirectly referenced export.
@@ -232,7 +250,17 @@ export class Collector {
     this._makeUniqueNames();
 
     for (const starExportedExternalModule of astModuleExportInfo.starExportedExternalModules) {
-      if (starExportedExternalModule.externalModulePath !== undefined) {
+      if (starExportedExternalModule.externalModulePath === undefined) {
+      /* MRT: Validate need & fix
+        const expInfo: AstModuleExportInfo = this.astSymbolTable.fetchAstModuleExportInfo(starExportedExternalModule);
+        for (const [name, entity] of expInfo.exportedLocalEntities) {
+          if (entity instanceof AstSymbol) {
+            this._createCollectorEntity(entity, name);
+          }
+        }
+
+        */
+      } else {
         this._starExportedExternalModulePaths.push(starExportedExternalModule.externalModulePath);
       }
     }
@@ -306,11 +334,11 @@ export class Collector {
     return parts.join('');
   }
 
-  private _createCollectorEntity(astEntity: AstEntity, exportedName: string | undefined): void {
+  private _createCollectorEntity(astEntity: AstEntity, exportedName: string | undefined, namespace?: string): void {
     let entity: CollectorEntity | undefined = this._entitiesByAstEntity.get(astEntity);
 
     if (!entity) {
-      entity = new CollectorEntity(astEntity);
+      entity = new CollectorEntity(astEntity, namespace);
 
       this._entitiesByAstEntity.set(astEntity, entity);
       this._entities.push(entity);
@@ -332,6 +360,9 @@ export class Collector {
     alreadySeenAstEntities.add(astEntity);
 
     if (astEntity instanceof AstSymbol) {
+      const collectorEntity: CollectorEntity | undefined = this.tryGetCollectorEntity(astEntity);
+      const namespace: string | undefined = collectorEntity && collectorEntity.namespace;
+
       astEntity.forEachDeclarationRecursive((astDeclaration: AstDeclaration) => {
         for (const referencedAstEntity of astDeclaration.referencedAstEntities) {
           if (referencedAstEntity instanceof AstSymbol) {
@@ -339,10 +370,10 @@ export class Collector {
             // For example, if a symbols is nested inside a namespace, only the root-level namespace
             // get a collector entity
             if (referencedAstEntity.parentAstSymbol === undefined) {
-              this._createCollectorEntity(referencedAstEntity, undefined);
+              this._createCollectorEntity(referencedAstEntity, undefined, namespace);
             }
           } else {
-            this._createCollectorEntity(referencedAstEntity, undefined);
+            this._createCollectorEntity(referencedAstEntity, undefined, namespace);
           }
 
           this._createEntityForIndirectReferences(referencedAstEntity, alreadySeenAstEntities);

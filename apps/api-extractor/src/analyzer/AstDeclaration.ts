@@ -158,7 +158,9 @@ export class AstDeclaration {
    */
   public _notifyReferencedAstEntity(referencedAstEntity: AstEntity): void {
     if (this.astSymbol.analyzed) {
-      throw new InternalError('_notifyReferencedAstEntity() called after analysis is already complete');
+      console.log('_notifyReferencedAstEntity() called after analysis is already complete');
+      return;
+      //throw new InternalError('_notifyReferencedAstEntity() called after analysis is already complete');
     }
 
     for (let current: AstDeclaration | undefined = this; current; current = current.parent) {

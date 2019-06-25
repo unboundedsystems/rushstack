@@ -226,7 +226,8 @@ export class ExportAnalyzer {
   /**
    * Implementation of {@link AstSymbolTable.fetchAstModuleExportInfo}.
    */
-  public fetchAstModuleExportInfo(entryPointAstModule: AstModule): AstModuleExportInfo {
+  public fetchAstModuleExportInfo(entryPointAstModule: AstModule, namespace?: string): AstModuleExportInfo {
+    console.log(`fetchAstModuleExportInfo:`, entryPointAstModule.sourceFile.fileName, namespace);
     if (entryPointAstModule.isExternal) {
       throw new Error('fetchAstModuleExportInfo() is not supported for external modules');
     }
@@ -235,7 +236,7 @@ export class ExportAnalyzer {
       const astModuleExportInfo: AstModuleExportInfo = new AstModuleExportInfo();
 
       this._collectAllExportsRecursive(astModuleExportInfo, entryPointAstModule,
-        new Set<AstModule>());
+        new Set<AstModule>(), namespace);
 
       entryPointAstModule.astModuleExportInfo = astModuleExportInfo;
     }
@@ -281,7 +282,7 @@ export class ExportAnalyzer {
   }
 
   private _collectAllExportsRecursive(astModuleExportInfo: AstModuleExportInfo, astModule: AstModule,
-    visitedAstModules: Set<AstModule>): void {
+    visitedAstModules: Set<AstModule>, namespace: string | undefined): void {
 
     if (visitedAstModules.has(astModule)) {
       return;
@@ -317,7 +318,10 @@ export class ExportAnalyzer {
       }
 
       for (const starExportedModule of astModule.starExportedModules) {
-        this._collectAllExportsRecursive(astModuleExportInfo, starExportedModule, visitedAstModules);
+        this._collectAllExportsRecursive(astModuleExportInfo, starExportedModule, visitedAstModules, namespace);
+        if (!starExportedModule.isExternal) {
+          this.fetchAstModuleExportInfo(starExportedModule, namespace);
+        }
       }
     }
   }
@@ -449,14 +453,33 @@ export class ExportAnalyzer {
         if (externalModulePath === undefined) {
           const followedSymbol: ts.Symbol =
             TypeScriptHelpers.followAliases(declarationSymbol, this._typeChecker);
-          return this._astSymbolTable.fetchAstSymbol({
+          if (followedSymbol.declarations.length !== 1) {
+            throw new Error(`MRT`);
+          }
+          const importSourceFile: ts.SourceFile = followedSymbol.declarations[0] as ts.SourceFile;
+          if (importSourceFile.kind !== ts.SyntaxKind.SourceFile) {
+            throw new Error(`MRT2`);
+          }
+          const moduleSpecifier: string | undefined = TypeScriptHelpers.getModuleSpecifier(importDeclaration);
+          if (!moduleSpecifier) {
+            throw new InternalError('Unable to parse module specifier');
+          }
+          const mod: AstModule = this.fetchAstModuleFromSourceFile(importSourceFile, {
+            moduleSpecifier,
+            moduleSpecifierSymbol: declarationSymbol // MRT is this the right symbol??
+          });
+          const localName: string = declarationSymbol.getName();
+          const sym: AstSymbol | undefined = this._astSymbolTable.fetchAstSymbol({
             followedSymbol,
             isExternal: false,
-            isNamespaceImport: true,
             addIfMissing: true,
             includeNominalAnalysis: true,
-            localName: declarationSymbol.getName()
+            localName,
+            namespaceImport: importDeclaration
           });
+          console.log(`Fetching due to import for:`, mod.sourceFile.fileName);
+          this.fetchAstModuleExportInfo(mod, localName);
+          return sym;
         }
 
         // Here importSymbol=undefined because {@inheritDoc} and such are not going to work correctly for

@@ -137,7 +137,8 @@ export class Span {
   private _separatorStartIndex: number;
   private _separatorEndIndex: number;
 
-  public constructor(node: ts.Node) {
+  public constructor(node: ts.Node, parent?: Span) {
+    if (parent) this._parent = parent;
     this.node = node;
     this.startIndex = node.kind === ts.SyntaxKind.SourceFile ? node.getFullStart() : node.getStart();
     this.endIndex = node.end;
