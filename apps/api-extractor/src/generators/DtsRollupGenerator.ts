@@ -324,14 +324,14 @@ export class DtsRollupGenerator {
         */
         if (astModule.astModuleExportInfo) {
           astModule.astModuleExportInfo.exportedLocalEntities.forEach((exportEntity) => {
-            console.log(`Exp local:\n`, exportEntity);
+            // console.log(`Exp local:\n`, exportEntity);
             // const s: Span = new Span(exportEntity);
             // DtsRollupGenerator._modifySpan(collector, s, entity, astDeclaration, dtsKind);
             // console.log(`STARMOD:\n${s.getModifiedText()}`);
 
           });
           astModule.astModuleExportInfo.starExportedExternalModules.forEach((extMod) => {
-            console.log(`Exp local:\n`, extMod);
+            // console.log(`Exp local:\n`, extMod);
 
           });
         }
