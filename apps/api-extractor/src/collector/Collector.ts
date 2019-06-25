@@ -408,7 +408,7 @@ export class Collector {
     const usedNames: Set<string> = new Set<string>();
 
     // First collect the names of explicit package exports, and perform a sanity check.
-    for (const entity of this._entities) {
+    for (const entity of this.entities) {
       for (const exportName of entity.exportNames) {
         if (usedNames.has(exportName)) {
           // This should be impossible
@@ -429,7 +429,7 @@ export class Collector {
     }
 
     // Ensure that each entity has a unique nameForEmit
-    for (const entity of this._entities) {
+    for (const entity of this.entities) {
 
       // What name would we ideally want to emit it as?
       let idealNameForEmit: string;
