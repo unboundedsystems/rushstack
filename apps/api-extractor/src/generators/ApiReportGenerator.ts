@@ -308,7 +308,7 @@ export class ApiReportGenerator {
                 const childSpan: Span = new Span(childAstDeclaration.declaration, span);
                 ApiReportGenerator._modifySpan(collector, childSpan, childEntity,
                   childAstDeclaration, insideTypeLiteral);
-                output += `\n// STARMOD:\n` + childSpan.getModifiedText();
+                output += childSpan.getModifiedText();
               }
             }
           }

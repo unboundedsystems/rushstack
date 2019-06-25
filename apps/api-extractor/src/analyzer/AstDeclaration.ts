@@ -160,7 +160,7 @@ export class AstDeclaration {
     if (this.astSymbol.analyzed) {
       console.log('_notifyReferencedAstEntity() called after analysis is already complete');
       return;
-      //throw new InternalError('_notifyReferencedAstEntity() called after analysis is already complete');
+      // throw new InternalError('_notifyReferencedAstEntity() called after analysis is already complete');
     }
 
     for (let current: AstDeclaration | undefined = this; current; current = current.parent) {

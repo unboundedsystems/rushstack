@@ -294,7 +294,7 @@ export class DtsRollupGenerator {
                 const decl: ts.Declaration = findOuterDeclaration(childAstDeclaration.declaration);
                 const childSpan: Span = new Span(decl, span);
                 DtsRollupGenerator._modifySpan(collector, childSpan, childEntity, childAstDeclaration, dtsKind);
-                output += `\n// STARMOD:\n` + childSpan.getModifiedText();
+                output += childSpan.getModifiedText();
               }
             }
           }
@@ -313,7 +313,8 @@ export class DtsRollupGenerator {
           mod.moduleSymbol.declarations.forEach((decl) => {
             decl.getChildren().forEach((node) => {
               const child: Span = new Span(node);
-              // const childAstDeclaration = collector.astSymbolTable.getChildAstDeclarationByNode(node, astDeclaration);
+              // const childAstDeclaration =
+              //  collector.astSymbolTable.getChildAstDeclarationByNode(node, astDeclaration);
               // console.log(childAstDeclaration);
               DtsRollupGenerator._modifySpan(collector, child, entity, astDeclaration, dtsKind);
               output += `\n// STARMOD:\n` + child.getModifiedText();
