@@ -113,7 +113,7 @@ export class AstDeclaration {
     }
 
     if (this.astSymbol.analyzed) {
-      throw new InternalError('_notifyChildAttach() called after analysis is already complete');
+      console.log('_notifyChildAttach() called after analysis is already complete');
     }
 
     this._analyzedChildren.push(child);

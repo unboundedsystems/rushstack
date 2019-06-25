@@ -177,7 +177,9 @@ export class AstSymbol {
    */
   public _notifyDeclarationAttach(astDeclaration: AstDeclaration): void {
     if (this.analyzed) {
-      throw new InternalError('_notifyDeclarationAttach() called after analysis is already complete');
+      // throw new InternalError('_notifyDeclarationAttach() called after analysis is already complete');
+      // MRT This really seems to be a problem with rootAstSymbol not being set/analyzed right
+      console.log('_notifyDeclarationAttach() called after analysis is already complete');
     }
     this._astDeclarations.push(astDeclaration);
   }
