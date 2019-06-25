@@ -36,8 +36,8 @@ import {
 import { Collector } from '../collector/Collector';
 import { AstDeclaration } from '../analyzer/AstDeclaration';
 import { ExcerptBuilder, IExcerptBuilderNodeToCapture } from './ExcerptBuilder';
+import { AstModule } from '../analyzer/AstModule';
 import { AstSymbol } from '../analyzer/AstSymbol';
-import { AstModule } from "../analyzer/AstModule";
 
 export class ApiModelGenerator {
   private readonly _collector: Collector;
@@ -606,11 +606,14 @@ export class ApiModelGenerator {
       const astModule: AstModule =
         this._collector.astSymbolTable.fetchAstModuleFromWorkingPackage(astDeclaration.declaration as ts.SourceFile);
       for (const mod of astModule.starExportedModules) {
-        if (!mod.astModuleExportInfo) continue;
-        for (const [name, entity] of mod.astModuleExportInfo.exportedLocalEntities) {
+        if (!mod.astModuleExportInfo) {
+          continue;
+        }
+        for (const [expName, entity] of mod.astModuleExportInfo.exportedLocalEntities) {
           if (entity instanceof AstSymbol) {
-            for (const astDeclaration of entity.astDeclarations) { // MRT: What about multiply-defined stuff? Should only process one?
-              this._processDeclaration(astDeclaration, name, apiNamespace);
+            for (const decl of entity.astDeclarations) {
+              // MRT: What about multiply-defined stuff? Should only process one?
+              this._processDeclaration(decl, expName, apiNamespace);
             }
           }
         }
