@@ -438,8 +438,10 @@ export class ExportAnalyzer {
             localName,
             namespaceImport: importDeclaration
           });
-          console.log(`Fetching due to import for:`, mod.sourceFile.fileName);
-          this.fetchAstModuleExportInfo(mod, localName);
+          if (!mod.astModuleExportInfo) {
+            console.log(`Fetching due to import for:`, mod.sourceFile.fileName);
+            this.fetchAstModuleExportInfo(mod, localName);
+          }
           return sym;
         }
 
