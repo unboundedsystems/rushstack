@@ -37,6 +37,7 @@ import { Collector } from '../collector/Collector';
 import { AstDeclaration } from '../analyzer/AstDeclaration';
 import { ExcerptBuilder, IExcerptBuilderNodeToCapture } from './ExcerptBuilder';
 import { AstSymbol } from '../analyzer/AstSymbol';
+import { AstModule } from "../analyzer/AstModule";
 
 export class ApiModelGenerator {
   private readonly _collector: Collector;
@@ -140,6 +141,8 @@ export class ApiModelGenerator {
         this._processApiMethodSignature(astDeclaration, exportedName, parentApiItem);
         break;
 
+      case ts.SyntaxKind.ExportDeclaration:
+        console.log(`ExpDecl`);
       case ts.SyntaxKind.ModuleDeclaration:
       case ts.SyntaxKind.SourceFile:
         this._processApiNamespace(astDeclaration, exportedName, parentApiItem);
@@ -599,6 +602,20 @@ export class ApiModelGenerator {
       parentApiItem.addMember(apiNamespace);
     }
 
+    if (astDeclaration.declaration.kind === ts.SyntaxKind.SourceFile) {
+      const astModule: AstModule =
+        this._collector.astSymbolTable.fetchAstModuleFromWorkingPackage(astDeclaration.declaration as ts.SourceFile);
+      for (const mod of astModule.starExportedModules) {
+        if (!mod.astModuleExportInfo) continue;
+        for (const [name, entity] of mod.astModuleExportInfo.exportedLocalEntities) {
+          if (entity instanceof AstSymbol) {
+            for (const astDeclaration of entity.astDeclarations) { // MRT: What about multiply-defined stuff? Should only process one?
+              this._processDeclaration(astDeclaration, name, apiNamespace);
+            }
+          }
+        }
+      }
+    }
     this._processChildDeclarations(astDeclaration, exportedName, apiNamespace);
   }
 

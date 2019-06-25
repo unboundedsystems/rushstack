@@ -30,11 +30,6 @@ export interface IFetchAstSymbolOptions {
   isExternal: boolean;
 
   /**
-   * True if followedSymbol came from a namespace import
-   */
-  isNamespaceImport?: boolean;
-
-  /**
    * If true, symbols with AstSymbol.nominalAnalysis=true will be returned.
    * Otherwise `undefined` will be returned for such symbols.
    */
@@ -50,6 +45,11 @@ export interface IFetchAstSymbolOptions {
    * A hint to help `_fetchAstSymbol()` determine the `AstSymbol.localName`.
    */
   localName?: string;
+
+  /**
+   * When doing a namespace import, the parent import declaration Node.
+   */
+  namespaceImport?: ts.Node;
 }
 
 /**
@@ -196,7 +196,8 @@ export class AstSymbolTable {
       throw new Error('Child declaration not found for the specified node');
     }
     if (childAstDeclaration.parent !== parentAstDeclaration) {
-      throw new InternalError('The found child is not attached to the parent AstDeclaration');
+      console.log('The found child is not attached to the parent AstDeclaration');
+      // throw new InternalError('The found child is not attached to the parent AstDeclaration');
     }
 
     return childAstDeclaration;
@@ -273,6 +274,19 @@ export class AstSymbolTable {
           }
         }
         break;
+/*
+      case ts.SyntaxKind.ExportDeclaration:
+        {
+          const expDeclNode: ts.ExportDeclaration = node as ts.ExportDeclaration;
+          const moduleSpecifier: string | undefined = TypeScriptHelpers.getModuleSpecifier(expDeclNode);
+          if (!moduleSpecifier) {
+            throw new InternalError('Unable to parse module specifier');
+          }
+          if (ts.isExternalModuleNameRelative(moduleSpecifier)) {
+
+          }
+        }
+        */
     }
 
     // Is this node declaring a new AstSymbol?
@@ -341,6 +355,7 @@ export class AstSymbolTable {
 
   private _fetchAstSymbol(options: IFetchAstSymbolOptions): AstSymbol | undefined {
     const followedSymbol: ts.Symbol = options.followedSymbol;
+    const isNamespaceImport: boolean = !!options.namespaceImport;
 
     // Filter out symbols representing constructs that we don't care about
     if (!TypeScriptHelpers.hasAnyDeclarations(followedSymbol)) {
@@ -396,7 +411,7 @@ export class AstSymbolTable {
       if (!nominalAnalysis) {
         for (const declaration of followedSymbol.declarations || []) {
           if (!AstDeclaration.isSupportedSyntaxKind(declaration.kind) &&
-            !(options.isNamespaceImport && declaration.kind === ts.SyntaxKind.SourceFile)) {
+            !(isNamespaceImport && declaration.kind === ts.SyntaxKind.SourceFile)) {
             throw new InternalError(`The "${followedSymbol.name}" symbol has a`
               + ` ts.SyntaxKind.${ts.SyntaxKind[declaration.kind]} declaration which is not (yet?)`
               + ` supported by API Extractor`);
@@ -416,7 +431,7 @@ export class AstSymbolTable {
 
         // Is there a parent AstSymbol?  First we check to see if there is a parent declaration:
         const arbitraryParentDeclaration: ts.Node | undefined
-          = this._tryFindFirstAstDeclarationParent(followedSymbol.declarations[0]);
+          = this._tryFindFirstAstDeclarationParent(options.namespaceImport || followedSymbol.declarations[0]);
 
         if (arbitraryParentDeclaration) {
           const parentSymbol: ts.Symbol = TypeScriptHelpers.getSymbolForDeclaration(
@@ -466,11 +481,14 @@ export class AstSymbolTable {
         }
       }
 
+      const namespace: string | undefined = isNamespaceImport ? localName : undefined;
+
       astSymbol = new AstSymbol({
         followedSymbol: followedSymbol,
         localName: localName,
         isExternal: options.isExternal,
-        isNamespaceImport: !!options.isNamespaceImport,
+        isNamespaceImport,
+        namespace,
         nominalAnalysis: nominalAnalysis,
         parentAstSymbol: parentAstSymbol,
         rootAstSymbol: parentAstSymbol ? parentAstSymbol.rootAstSymbol : undefined
@@ -520,7 +538,10 @@ export class AstSymbolTable {
     while (currentNode) {
       if (currentNode.kind === ts.SyntaxKind.SourceFile) {
         if (this._astDeclarationsByDeclaration.get(currentNode)) {
+          console.log(`FOUND for`, (currentNode as ts.SourceFile).fileName);
           return currentNode;
+        } else {
+          console.log(`NOT FOUND for`, (currentNode as ts.SourceFile).fileName);
         }
 
       } else if (AstDeclaration.isSupportedSyntaxKind(currentNode.kind)) {

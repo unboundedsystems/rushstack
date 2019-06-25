@@ -18,6 +18,7 @@ import { AstSymbol } from '../analyzer/AstSymbol';
 import { SymbolMetadata } from '../collector/SymbolMetadata';
 import { StringWriter } from './StringWriter';
 import { DtsEmitHelpers } from './DtsEmitHelpers';
+import { AstModule } from '../analyzer/AstModule';
 
 /**
  * Used with DtsRollupGenerator.writeTypingsFile()
@@ -146,6 +147,7 @@ export class DtsRollupGenerator {
     const previousSpan: Span | undefined = span.previousSibling;
 
     let recurseChildren: boolean = true;
+    let indentChildren: boolean = false;
     switch (span.kind) {
       case ts.SyntaxKind.JSDocComment:
         // If the @packageDocumentation comment seems to be attached to one of the regular API items,
@@ -176,7 +178,7 @@ export class DtsRollupGenerator {
         let replacedModifiers: string = '';
 
         // Add a declare statement for root declarations (but not for nested declarations)
-        if (!astDeclaration.parent) {
+        if (!entity.namespace) {
           replacedModifiers += 'declare ';
         }
 
@@ -257,11 +259,77 @@ export class DtsRollupGenerator {
         break;
 
       case ts.SyntaxKind.SourceFile:
-        if (!astDeclaration.parent) {
+        if (!astDeclaration.parent && !span.parent) {
           span.modification.prefix = 'export declare ';
         }
         span.modification.prefix += `namespace ${astDeclaration.astSymbol.localName} {\n`;
         span.modification.suffix = '\n}';
+        indentChildren = true;
+        break;
+
+      case ts.SyntaxKind.ExportDeclaration: {
+        let output: string = '';
+        const astModule: AstModule =
+          collector.astSymbolTable.fetchAstModuleFromWorkingPackage(astDeclaration.declaration as ts.SourceFile);
+        for (const mod of astModule.starExportedModules) {
+          if (!mod.astModuleExportInfo) {
+            continue;
+          }
+          for (const ent of mod.astModuleExportInfo.exportedLocalEntities.values()) {
+            if (ent instanceof AstSymbol) {
+              const childEntity: CollectorEntity | undefined = collector.tryGetCollectorEntity(ent);
+              if (!childEntity) {
+                throw new Error(`Why no child entity?`);
+              }
+              for (const childAstDeclaration of ent.astDeclarations) {
+                const decl: ts.Declaration = findOuterDeclaration(childAstDeclaration.declaration);
+                const childSpan: Span = new Span(decl, span);
+                DtsRollupGenerator._modifySpan(collector, childSpan, childEntity, childAstDeclaration, dtsKind);
+                output += `\n// STARMOD:\n` + childSpan.getModifiedText();
+              }
+            }
+          }
+        }
+        /*
+        astModule.starExportedModules.forEach((mod) => {
+          mod.sourceFile.getChildren().forEach((node) => {
+            const child: Span = new Span(node, span);
+            // const childAstDeclaration = collector.astSymbolTable.getChildAstDeclarationByNode(node, astDeclaration);
+            // console.log(childAstDeclaration);
+            DtsRollupGenerator._modifySpan(collector, child, entity, astDeclaration, dtsKind);
+            output += `\n// STARMOD:\n` + child.getModifiedText();
+          });
+          */
+          /*
+          mod.moduleSymbol.declarations.forEach((decl) => {
+            decl.getChildren().forEach((node) => {
+              const child: Span = new Span(node);
+              // const childAstDeclaration = collector.astSymbolTable.getChildAstDeclarationByNode(node, astDeclaration);
+              // console.log(childAstDeclaration);
+              DtsRollupGenerator._modifySpan(collector, child, entity, astDeclaration, dtsKind);
+              output += `\n// STARMOD:\n` + child.getModifiedText();
+            });
+          });
+        });
+        */
+        if (astModule.astModuleExportInfo) {
+          astModule.astModuleExportInfo.exportedLocalEntities.forEach((exportEntity) => {
+            console.log(`Exp local:\n`, exportEntity);
+            // const s: Span = new Span(exportEntity);
+            // DtsRollupGenerator._modifySpan(collector, s, entity, astDeclaration, dtsKind);
+            // console.log(`STARMOD:\n${s.getModifiedText()}`);
+
+          });
+          astModule.astModuleExportInfo.starExportedExternalModules.forEach((extMod) => {
+            console.log(`Exp local:\n`, extMod);
+
+          });
+        }
+        span.modification.omitChildren = true;
+        span.modification.prefix = output;
+        recurseChildren = false;
+        break;
+      }
     }
 
     if (recurseChildren) {
@@ -272,6 +340,10 @@ export class DtsRollupGenerator {
         let trimmed: boolean = false;
         // MRT: Probably need to check here for SourceFile when dealing with
         // an import * as foo in file other than index.d.ts
+        if (indentChildren) {
+          child.modification.indent = true;
+        }
+
         if (AstDeclaration.isSupportedSyntaxKind(child.kind)) {
           childAstDeclaration = collector.astSymbolTable.getChildAstDeclarationByNode(child.node, astDeclaration);
 
@@ -320,9 +392,6 @@ export class DtsRollupGenerator {
 
             trimmed = true;
           }
-        // DEBUG
-        // } else {
-        //   if (child.kind === ts.SyntaxKind.SourceFile) debugger
         }
 
         if (!trimmed) {
@@ -346,4 +415,16 @@ export class DtsRollupGenerator {
 
     throw new Error(`${DtsRollupKind[dtsKind]} is not implemented`);
   }
+}
+
+function findOuterDeclaration(declaration: ts.Declaration): ts.Declaration {
+  let outerDeclaration: ts.Declaration | undefined = undefined;
+
+  switch (declaration.kind) {
+    case ts.SyntaxKind.VariableDeclaration:
+      outerDeclaration =
+        TypeScriptHelpers.findFirstParent(declaration, ts.SyntaxKind.VariableStatement);
+      break;
+  }
+  return outerDeclaration || declaration;
 }

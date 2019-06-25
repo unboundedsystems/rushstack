@@ -13,6 +13,7 @@ export interface IAstSymbolOptions {
   readonly localName: string;
   readonly isExternal: boolean;
   readonly isNamespaceImport: boolean;
+  readonly namespace: string | undefined;
   readonly nominalAnalysis: boolean;
   readonly parentAstSymbol: AstSymbol | undefined;
   readonly rootAstSymbol: AstSymbol | undefined;
@@ -83,6 +84,9 @@ export class AstSymbol {
    */
   public readonly followedSymbol: ts.Symbol;
 
+  public readonly enclosingNamespace: string | undefined;
+  public readonly namespace: string | undefined;
+
   /**
    * If true, then this AstSymbol represents a foreign object whose structure will be
    * ignored.  The AstDeclaration objects will not have any parent or children, and its references
@@ -126,6 +130,17 @@ export class AstSymbol {
     this.localName = options.localName;
     this.isExternal = options.isExternal;
     this.isNamespaceImport = options.isNamespaceImport;
+    this.namespace = options.namespace;
+    const ns: string[] = [];
+    if (options.parentAstSymbol) {
+      if (options.parentAstSymbol.enclosingNamespace) {
+        ns.push(options.parentAstSymbol.enclosingNamespace);
+      }
+      if (options.parentAstSymbol.namespace) {
+        ns.push(options.parentAstSymbol.namespace);
+      }
+    }
+    this.enclosingNamespace = (ns.length > 0) ? ns.join('.') : undefined;
     this.nominalAnalysis = options.nominalAnalysis;
     this.parentAstSymbol = options.parentAstSymbol;
     this.rootAstSymbol = options.rootAstSymbol || this;

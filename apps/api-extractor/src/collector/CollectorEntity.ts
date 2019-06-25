@@ -23,6 +23,8 @@ export class CollectorEntity {
    */
   public readonly astEntity: AstEntity;
 
+  public readonly namespace: string | undefined;
+
   private _exportNames: Set<string> = new Set<string>();
   private _exportNamesSorted: boolean = false;
   private _singleExportName: string | undefined = undefined;
@@ -31,8 +33,9 @@ export class CollectorEntity {
 
   private _sortKey: string | undefined = undefined;
 
-  public constructor(astEntity: AstEntity) {
+  public constructor(astEntity: AstEntity, namespace?: string) {
     this.astEntity = astEntity;
+    this.namespace = namespace;
   }
 
   /**
