@@ -223,11 +223,10 @@ export class ExportAnalyzer {
 
     if (entryPointAstModule.astModuleExportInfo === undefined) {
       const astModuleExportInfo: AstModuleExportInfo = new AstModuleExportInfo();
+      entryPointAstModule.astModuleExportInfo = astModuleExportInfo;
 
       this._collectAllExportsRecursive(astModuleExportInfo, entryPointAstModule,
         new Set<AstModule>(), namespace);
-
-      entryPointAstModule.astModuleExportInfo = astModuleExportInfo;
     }
     return entryPointAstModule.astModuleExportInfo;
   }
