@@ -242,11 +242,7 @@ export class DtsRollupGenerator {
           span.node as ts.Identifier
         );
 
-        if (referencedEntity) {
-          if (!referencedEntity.nameForEmit) {
-            // This should never happen
-            throw new InternalError('referencedEntry.nameForEmit is undefined');
-          }
+        if (referencedEntity && referencedEntity.nameForEmit) {
 
           span.modification.prefix = referencedEntity.nameForEmit;
           // For debugging:

@@ -376,8 +376,8 @@ export class Collector {
     const usedNames: Set<string> = new Set<string>();
     this._collectGlobalNames(usedNames);
 
-    // First collect the explicit package exports (named)
-    for (const entity of this._entities) {
+    // First collect the explic1it package exports (named)
+    for (const entity of this.entities) {
       for (const exportName of entity.exportNames) {
         if (usedNames.has(exportName)) {
           // This should be impossible
@@ -389,7 +389,7 @@ export class Collector {
     }
 
     // Next generate unique names for the non-exports that will be emitted (and the default export)
-    for (const entity of this._entities) {
+    for (const entity of this.entities) {
 
       // If this entity is exported exactly once, then emit the exported name
       if (entity.singleExportName !== undefined && entity.singleExportName !== ts.InternalSymbolName.Default) {

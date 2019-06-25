@@ -259,11 +259,11 @@ export class ApiReportGenerator {
           span.node as ts.Identifier
         );
 
-        if (referencedEntity) {
-          if (!referencedEntity.nameForEmit) {
+        if (referencedEntity && referencedEntity.nameForEmit) {
+          // if (!referencedEntity.nameForEmit) {
             // This should never happen
-            throw new InternalError('referencedEntry.nameForEmit is undefined');
-          }
+            // throw new InternalError('referencedEntry.nameForEmit is undefined');
+          // }
 
           span.modification.prefix = referencedEntity.nameForEmit;
           // For debugging:
