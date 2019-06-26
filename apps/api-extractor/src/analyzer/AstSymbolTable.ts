@@ -492,8 +492,8 @@ export class AstSymbolTable {
 
       if (!nominalAnalysis) {
         for (const declaration of followedSymbol.declarations || []) {
-          if (!AstDeclaration.isSupportedSyntaxKind(declaration.kind) &&
-            !(isNamespaceImport && declaration.kind === ts.SyntaxKind.SourceFile)) {
+          if (!(AstDeclaration.isSupportedSyntaxKind(declaration.kind) ||
+            declaration.kind === ts.SyntaxKind.SourceFile)) {
             throw new InternalError(`The "${followedSymbol.name}" symbol has a`
               + ` ts.SyntaxKind.${ts.SyntaxKind[declaration.kind]} declaration which is not (yet?)`
               + ` supported by API Extractor`);
