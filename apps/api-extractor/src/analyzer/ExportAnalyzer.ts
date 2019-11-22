@@ -227,7 +227,7 @@ export class ExportAnalyzer {
    * Implementation of {@link AstSymbolTable.fetchAstModuleExportInfo}.
    */
   public fetchAstModuleExportInfo(entryPointAstModule: AstModule, namespace?: string): AstModuleExportInfo {
-    console.log(`fetchAstModuleExportInfo:`, entryPointAstModule.sourceFile.fileName, namespace);
+    //console.log(`fetchAstModuleExportInfo:`, entryPointAstModule.sourceFile.fileName, namespace);
     if (entryPointAstModule.isExternal) {
       throw new Error('fetchAstModuleExportInfo() is not supported for external modules');
     }
@@ -477,7 +477,7 @@ export class ExportAnalyzer {
             namespaceImport: importDeclaration
           });
           if (!mod.astModuleExportInfo) {
-            console.log(`Fetching due to import for:`, mod.sourceFile.fileName);
+            //console.log(`Fetching due to import for:`, mod.sourceFile.fileName);
             this.fetchAstModuleExportInfo(mod, localName);
           }
           return sym;

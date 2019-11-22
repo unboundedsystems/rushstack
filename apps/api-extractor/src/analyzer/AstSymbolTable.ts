@@ -198,7 +198,7 @@ export class AstSymbolTable {
       throw new Error('Child declaration not found for the specified node');
     }
     if (childAstDeclaration.parent !== parentAstDeclaration) {
-      console.log('The found child is not attached to the parent AstDeclaration');
+      //console.log('The found child is not attached to the parent AstDeclaration');
       // throw new InternalError('The found child is not attached to the parent AstDeclaration');
     }
 
@@ -593,10 +593,10 @@ export class AstSymbolTable {
     while (currentNode) {
       if (currentNode.kind === ts.SyntaxKind.SourceFile) {
         if (this._astDeclarationsByDeclaration.get(currentNode)) {
-          console.log(`FOUND for`, (currentNode as ts.SourceFile).fileName);
+          //console.log(`FOUND for`, (currentNode as ts.SourceFile).fileName);
           return currentNode;
         } else {
-          console.log(`NOT FOUND for`, (currentNode as ts.SourceFile).fileName);
+          //console.log(`NOT FOUND for`, (currentNode as ts.SourceFile).fileName);
         }
 
       } else if (AstDeclaration.isSupportedSyntaxKind(currentNode.kind)) {

@@ -150,7 +150,7 @@ export class ApiModelGenerator {
         break;
 
       case ts.SyntaxKind.ExportDeclaration:
-        console.log(`ExpDecl`);
+        //console.log(`ExpDecl`);
       case ts.SyntaxKind.ModuleDeclaration:
       case ts.SyntaxKind.SourceFile:
         this._processApiNamespace(astDeclaration, exportedName, parentApiItem);
