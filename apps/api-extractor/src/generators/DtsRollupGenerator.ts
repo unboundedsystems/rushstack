@@ -191,7 +191,7 @@ export class DtsRollupGenerator {
         let replacedModifiers: string = '';
 
         // Add a declare statement for root declarations (but not for nested declarations)
-        if (!entity.namespace) {
+        if (!astDeclaration.parent) {
           replacedModifiers += 'declare ';
         }
 
