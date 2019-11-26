@@ -51,7 +51,7 @@ export class ClassWithSymbols {
     // (undocumented)
     [ANamespace.fullyExportedCustomSymbol](): void;
     // Warning: (ae-forgotten-export) The symbol "ANamespace" needs to be exported by the entry point index.d.ts
-    // 
+    //
     // (undocumented)
     readonly [ANamespace.locallyExportedCustomSymbol]: string;
     // (undocumented)
@@ -99,7 +99,7 @@ export class DefaultExportEdgeCase {
 // @public (undocumented)
 export class ForgottenExportConsumer1 {
     // Warning: (ae-forgotten-export) The symbol "IForgottenExport" needs to be exported by the entry point index.d.ts
-    // 
+    //
     // (undocumented)
     test1(): IForgottenExport | undefined;
 }
@@ -107,7 +107,7 @@ export class ForgottenExportConsumer1 {
 // @public (undocumented)
 export class ForgottenExportConsumer2 {
     // Warning: (ae-forgotten-export) The symbol "IForgottenExport" needs to be exported by the entry point index.d.ts
-    // 
+    //
     // (undocumented)
     test2(): IForgottenExport_2 | undefined;
 }
@@ -115,7 +115,7 @@ export class ForgottenExportConsumer2 {
 // @beta
 export class ForgottenExportConsumer3 {
     // Warning: (ae-forgotten-export) The symbol "IForgottenDirectDependency" needs to be exported by the entry point index.d.ts
-    // 
+    //
     // (undocumented)
     test2(): IForgottenDirectDependency | undefined;
 }
@@ -158,6 +158,24 @@ export { MAX_UNSIGNED_VALUE }
 export namespace NamespaceContainingVariable {
     let // @internal (undocumented)
     variable: object[];
+}
+
+// @public (undocumented)
+export namespace RealNamespaceImport {
+// (undocumented)
+  export class ClassInNamespace {
+      // (undocumented)
+      self(): this;
+  }
+  let // (undocumented)
+  namespaceVariable: ClassInNamespace | undefined;
+  // (undocumented)
+  export function namespaceFunc(): ClassInNamespace;
+  // (undocumented)
+  export namespace foo {
+      var // (undocumented)
+      bar: number;
+  }
 }
 
 // @public

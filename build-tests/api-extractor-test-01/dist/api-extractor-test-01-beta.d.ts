@@ -255,6 +255,17 @@ export declare namespace NamespaceContainingVariable {
     /* Excluded from this release type: variable */
 }
 
+export declare namespace RealNamespaceImport {
+export class ClassInNamespace {
+      self(): this;
+  }
+  let namespaceVariable: ClassInNamespace | undefined;
+  export function namespaceFunc(): ClassInNamespace;
+  export namespace foo {
+      var bar: number;
+  }
+}
+
 /**
  * This class gets aliased twice before being exported from the package.
  * @public
