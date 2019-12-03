@@ -216,7 +216,7 @@ export class MarkdownDocumenter {
       }
     }
 
-    if (apiItem instanceof ApiDeclaredItem) {
+    if (apiItem instanceof ApiDeclaredItem && apiItem.kind !== ApiItemKind.Namespace) {
       if (apiItem.excerpt.text.length > 0) {
         output.appendNode(
           new DocParagraph({ configuration }, [
