@@ -1,6 +1,7 @@
 import { TSDocConfiguration, DocNodeKind } from '@microsoft/tsdoc';
 import { DocEmphasisSpan } from './DocEmphasisSpan';
 import { DocHeading } from './DocHeading';
+import { DocLinkedCodeSpan } from './DocLinkedCodeSpan';
 import { DocNoteBox } from './DocNoteBox';
 import { DocTable } from './DocTable';
 import { DocTableCell } from './DocTableCell';
@@ -15,6 +16,7 @@ import { DocTableRow } from './DocTableRow';
 export const enum CustomDocNodeKind {
   EmphasisSpan                  = 'EmphasisSpan',
   Heading                       = 'Heading',
+  LinkedCodeSpan                = 'LinkedCodeSpan',
   NoteBox                       = 'NoteBox',
   Table                         = 'Table',
   TableCell                     = 'TableCell',
@@ -31,6 +33,7 @@ export class CustomDocNodes {
       configuration.docNodeManager.registerDocNodes('@micrososft/api-documenter', [
         { docNodeKind: CustomDocNodeKind.EmphasisSpan, constructor: DocEmphasisSpan },
         { docNodeKind: CustomDocNodeKind.Heading, constructor: DocHeading },
+        { docNodeKind: CustomDocNodeKind.LinkedCodeSpan, constructor: DocLinkedCodeSpan },
         { docNodeKind: CustomDocNodeKind.NoteBox, constructor: DocNoteBox },
         { docNodeKind: CustomDocNodeKind.Table, constructor: DocTable },
         { docNodeKind: CustomDocNodeKind.TableCell, constructor: DocTableCell },
@@ -42,6 +45,10 @@ export class CustomDocNodes {
         DocNodeKind.SoftBreak
       ]);
 
+      configuration.docNodeManager.registerAllowableChildren(CustomDocNodeKind.LinkedCodeSpan, [
+        DocNodeKind.CodeSpan
+      ]);
+
       configuration.docNodeManager.registerAllowableChildren(DocNodeKind.Section, [
         CustomDocNodeKind.Heading,
         CustomDocNodeKind.NoteBox,
@@ -49,7 +56,8 @@ export class CustomDocNodes {
       ]);
 
       configuration.docNodeManager.registerAllowableChildren(DocNodeKind.Paragraph, [
-        CustomDocNodeKind.EmphasisSpan
+        CustomDocNodeKind.EmphasisSpan,
+        CustomDocNodeKind.LinkedCodeSpan
       ]);
 
       CustomDocNodes._configuration = configuration;

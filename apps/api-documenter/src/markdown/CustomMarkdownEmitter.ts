@@ -14,6 +14,7 @@ import {
 
 import { CustomDocNodeKind } from '../nodes/CustomDocNodeKind';
 import { DocHeading } from '../nodes/DocHeading';
+import { DocLinkedCodeSpan } from '../nodes/DocLinkedCodeSpan';
 import { DocNoteBox } from '../nodes/DocNoteBox';
 import { DocTable } from '../nodes/DocTable';
 import { DocTableCell } from '../nodes/DocTableCell';
@@ -64,6 +65,14 @@ export class CustomMarkdownEmitter extends MarkdownEmitter {
 
         writer.writeLine(prefix + ' ' + this.getEscapedText(docHeading.title));
         writer.writeLine();
+        break;
+      }
+      case CustomDocNodeKind.LinkedCodeSpan: {
+        const linkedCode: DocLinkedCodeSpan = docNode as DocLinkedCodeSpan;
+
+        writer.write('[');
+        this.writeNode(linkedCode.codeSpan, context, false);
+        writer.write(`](${linkedCode.urlDestination})`);
         break;
       }
       case CustomDocNodeKind.NoteBox: {
