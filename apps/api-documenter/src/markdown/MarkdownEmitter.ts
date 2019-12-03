@@ -108,23 +108,7 @@ export class MarkdownEmitter {
       }
       case DocNodeKind.CodeSpan: {
         const docCodeSpan: DocCodeSpan = docNode as DocCodeSpan;
-        if (context.insideTable) {
-          writer.write('<code>');
-        } else {
-          writer.write('`');
-        }
-        if (context.insideTable) {
-          const code: string = this.getTableEscapedText(docCodeSpan.code);
-          const parts: string[] = code.split(/\r?\n/g);
-          writer.write(parts.join('</code><br/><code>'));
-        } else {
-          writer.write(docCodeSpan.code);
-        }
-        if (context.insideTable) {
-          writer.write('</code>');
-        } else {
-          writer.write('`');
-        }
+        this.writeCode(docCodeSpan.code, context);
         break;
       }
       case DocNodeKind.LinkTag: {
@@ -266,6 +250,27 @@ export class MarkdownEmitter {
     }
 
     writer.write(parts[3]);  // write trailing whitespace
+  }
+
+  protected writeCode(code: string, context: IMarkdownEmitterContext): void {
+    const { insideTable, writer } = context;
+    if (insideTable) {
+      writer.write('<code>');
+    } else {
+      writer.write('`');
+    }
+    if (insideTable) {
+      const escaped: string = this.getTableEscapedText(code);
+      const parts: string[] = escaped.split(/\r?\n/g);
+      writer.write(parts.join('</code><br/><code>'));
+    } else {
+      writer.write(code);
+    }
+    if (insideTable) {
+      writer.write('</code>');
+    } else {
+      writer.write('`');
+    }
   }
 
   protected writeNodes(docNodes: ReadonlyArray<DocNode>, context: IMarkdownEmitterContext): void {

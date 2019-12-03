@@ -192,6 +192,7 @@ export class CustomMarkdownEmitter extends MarkdownEmitter {
     } else if (result.errorMessage) {
       console.log(colors.yellow(`WARNING: Unable to resolve reference "${docLinkTag.codeDestination!.emitAsTsdoc()}": `
         + result.errorMessage));
+      this.writeCode(docLinkTag.codeDestination!.emitAsTsdoc(), context);
     }
   }
 
