@@ -20,8 +20,12 @@ import {
   DocFencedCode,
   StandardTags,
   DocBlock,
-  DocComment
+  DocComment,
+  DocNode,
 } from '@microsoft/tsdoc';
+import {
+  DeclarationReference,
+} from '@microsoft/tsdoc/lib/beta/DeclarationReference';
 import {
   ApiModel,
   ApiItem,
@@ -39,11 +43,14 @@ import {
   ApiParameterListMixin,
   ApiReturnTypeMixin,
   ApiDeclaredItem,
-  ApiNamespace
+  ApiNamespace,
+  ApiItemContainerMixin,
+  ExcerptToken
 } from '@microsoft/api-extractor-model';
 
 import { CustomDocNodes } from '../nodes/CustomDocNodeKind';
 import { DocHeading } from '../nodes/DocHeading';
+import { DocLinkedCodeSpan } from '../nodes/DocLinkedCodeSpan';
 import { DocTable } from '../nodes/DocTable';
 import { DocEmphasisSpan } from '../nodes/DocEmphasisSpan';
 import { DocTableRow } from '../nodes/DocTableRow';
@@ -59,11 +66,26 @@ import {
 import { DocumenterConfig } from './DocumenterConfig';
 import { MarkdownDocumenterAccessor } from '../plugin/MarkdownDocumenterAccessor';
 
+interface ICreateTypeNodesOptions {
+  configuration: TSDocConfiguration;
+  ifEmpty?: string;
+  lineBreakLength?: number;
+}
+
+function maxLineLength(str: string): number {
+  let max: number = 0;
+  for (const l of str.split(/\r\n/)) {
+    if (l.length > max) max = l.length;
+  }
+  return max;
+}
+
 /**
  * Renders API documentation in the Markdown file format.
  * For more info:  https://en.wikipedia.org/wiki/Markdown
  */
 export class MarkdownDocumenter {
+  private readonly _apiItemsByCanonicalReference: Map<string, ApiItem>;
   private readonly _apiModel: ApiModel;
   private readonly _documenterConfig: DocumenterConfig | undefined;
   private readonly _tsdocConfiguration: TSDocConfiguration;
@@ -72,12 +94,14 @@ export class MarkdownDocumenter {
   private readonly _pluginLoader: PluginLoader;
 
   public constructor(apiModel: ApiModel, documenterConfig: DocumenterConfig | undefined) {
+    this._apiItemsByCanonicalReference = new Map<string, ApiItem>();
     this._apiModel = apiModel;
     this._documenterConfig = documenterConfig;
     this._tsdocConfiguration = CustomDocNodes.configuration;
     this._markdownEmitter = new CustomMarkdownEmitter(this._apiModel);
 
     this._pluginLoader = new PluginLoader();
+    this._initApiItems();
   }
 
   public generateFiles(outputFolder: string): void {
@@ -703,9 +727,9 @@ export class MarkdownDocumenter {
             ])
           ]),
           new DocTableCell({configuration}, [
-            new DocParagraph({ configuration }, [
-              new DocCodeSpan({ configuration, code: apiParameter.parameterTypeExcerpt.text })
-            ])
+            new DocParagraph({ configuration },
+              this._createTypeNodes(apiParameter.parameterTypeExcerpt, { configuration, lineBreakLength: 30 })
+            )
           ]),
           new DocTableCell({configuration}, parameterDescription.nodes)
         ])
@@ -728,9 +752,9 @@ export class MarkdownDocumenter {
       );
 
       output.appendNode(
-        new DocParagraph({ configuration }, [
-          new DocCodeSpan({ configuration, code: returnTypeExcerpt.text.trim() || '(not declared)' })
-        ])
+        new DocParagraph({ configuration },
+          this._createTypeNodes(returnTypeExcerpt, { configuration, ifEmpty: '(not declared)' })
+        )
       );
 
       if (apiParameterListMixin instanceof ApiDocumentedItem) {
@@ -808,10 +832,67 @@ export class MarkdownDocumenter {
     const section: DocSection = new DocSection({ configuration });
 
     if (apiItem instanceof ApiPropertyItem) {
-      section.appendNodeInParagraph(new DocCodeSpan({ configuration, code: apiItem.propertyTypeExcerpt.text }));
+      section.appendNodesInParagraph(this._createTypeNodes(apiItem.propertyTypeExcerpt, { configuration, lineBreakLength: 30 }));
     }
 
     return new DocTableCell({ configuration }, section.nodes);
+  }
+
+  /**
+   * Returns an array of nodes that contain (possibly linked) code spans
+   * that describe a static type.
+   *
+   * @remarks
+   * Collapses all adjacent text nodes in the excerpt into a single code span.
+   */
+  private _createTypeNodes(excerpt: Excerpt, options: ICreateTypeNodesOptions): DocNode[] {
+    const codeLineBreakRegex: RegExp = /([|&])\s*/g;
+    const { configuration, ifEmpty, lineBreakLength } = options;
+    const nodes: DocNode[] = [];
+    let textChunks: string[] = [];
+
+    const tokens: ExcerptToken[] = excerpt.tokens
+      .slice(excerpt.tokenRange.startIndex, excerpt.tokenRange.endIndex);
+    const addLineBreaks: boolean = typeof lineBreakLength === "number" &&
+      maxLineLength(tokens.map(t => t.text).join("")) > lineBreakLength;
+
+    function makeCodeSpan(): void {
+      let code: string = textChunks.join('');
+      textChunks = [];
+      if (code.length === 0) return;
+
+      if (addLineBreaks) code = code.replace(codeLineBreakRegex, "$1\n");
+
+      nodes.push(new DocCodeSpan({ configuration, code }));
+    }
+
+
+    for (const t of tokens) {
+      const apiItem: ApiItem | undefined = this._getApiItemFromReference(t.canonicalReference);
+      if (t.kind === "Content" || !apiItem) {
+        textChunks.push(t.text);
+        continue;
+      }
+
+      // If there were previous text nodes, collapse them into a code span
+      // before adding the link tag.
+      makeCodeSpan();
+
+      nodes.push(new DocLinkedCodeSpan({
+        configuration,
+        codeSpan: new DocCodeSpan({ configuration, code: t.text }),
+        urlDestination: this._getLinkFilenameForApiItem(apiItem),
+      }));
+    }
+
+    // Collapse any remaining text nodes
+    makeCodeSpan();
+
+    if (nodes.length === 0 && ifEmpty) {
+      nodes.push(new DocCodeSpan({ configuration, code: ifEmpty }));
+    }
+
+    return nodes;
   }
 
   private _writeBreadcrumb(output: DocSection, apiItem: ApiItem): void {
@@ -915,6 +996,34 @@ export class MarkdownDocumenter {
 
   private _getLinkFilenameForApiItem(apiItem: ApiItem): string {
     return './' + this._getFilenameForApiItem(apiItem);
+  }
+
+  /**
+   * Initialize the _apiItemsByCanonicalReference data structure.
+   */
+  private _initApiItems(): void {
+    this._initApiItemsRecursive(this._apiModel);
+  }
+
+  /**
+   * Helper for _initApiItems()
+   */
+  private _initApiItemsRecursive(apiItem: ApiItem): void {
+    if (apiItem.canonicalReference && !apiItem.canonicalReference.isEmpty) {
+      this._apiItemsByCanonicalReference.set(apiItem.canonicalReference.toString(), apiItem);
+    }
+
+    // Recurse container members
+    if (ApiItemContainerMixin.isBaseClassOf(apiItem)) {
+      for (const apiMember of apiItem.members) {
+        this._initApiItemsRecursive(apiMember);
+      }
+    }
+  }
+
+  private _getApiItemFromReference(ref: DeclarationReference | undefined): ApiItem | undefined {
+    if (!ref) return undefined;
+    return this._apiItemsByCanonicalReference.get(ref.toString());
   }
 
   private _deleteOldOutputFiles(): void {
